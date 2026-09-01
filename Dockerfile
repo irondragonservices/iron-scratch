@@ -1,8 +1,22 @@
 FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS builder
 
+# Update base system.
+#
+# The upgrade is the point, and it was missing: the step this replaces only
+# installed ca-certificates, so the image shipped whatever packages the base
+# image tag happened to contain. Alpine patches a package well before it
+# rebuilds and republishes the base image, so a digest pin — which is what
+# Renovate maintains — pins the *unpatched* set until upstream gets round to a
+# rebuild. openssl 3.5.7-r0 sat in alpine:3.24.1 with a fixed HIGH against it
+# and 3.5.8-r0 already in the repository.
+#
+# This is also what makes the nightly cache-free rebuild worth running. Without
+# it that job rebuilds the same packages every night and picks up nothing.
+#
 # add ca certificates and timezone data files
 # hadolint ignore=DL3018
-RUN apk add -U --no-cache ca-certificates tzdata
+RUN apk upgrade --no-cache \
+  && apk add -U --no-cache ca-certificates tzdata
 
 # add unprivileged user
 RUN adduser -s /bin/true -u 1000 -D -h /app app \
